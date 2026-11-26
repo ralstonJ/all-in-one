@@ -1,26 +1,98 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --background: #f4f5f7;
+  --foreground: #1f2328;
+}
+
+html {
+  color-scheme: light;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* ─── FullCalendar theming (task calendar) ──────────────────────────────── */
+.task-calendar .fc {
+  --fc-border-color: #e2e8f0;
+  --fc-today-bg-color: #eff6ff;
+  --fc-now-indicator-color: #e11d48;
+  --fc-button-bg-color: #ffffff;
+  --fc-button-border-color: #cbd5e1;
+  --fc-button-text-color: #334155;
+  --fc-button-hover-bg-color: #f1f5f9;
+  --fc-button-hover-border-color: #cbd5e1;
+  --fc-button-active-bg-color: #0f172a;
+  --fc-button-active-border-color: #0f172a;
+  --fc-event-border-color: transparent;
+  --fc-event-selected-overlay-color: transparent;
+  font-size: 0.875rem;
+}
+.task-calendar .fc .fc-button-group > .fc-button {
+  margin: 0;
+}
+.task-calendar .fc .fc-toolbar.fc-header-toolbar {
+  margin-bottom: 1rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.task-calendar .fc .fc-today-button {
+  margin-left: 0.5rem;
+}
+.task-calendar .fc .fc-button {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.35rem 0.75rem;
+  box-shadow: none;
+}
+.task-calendar .fc .fc-button-primary:not(:disabled).fc-button-active,
+.task-calendar .fc .fc-button-primary:not(:disabled):active {
+  color: #ffffff;
+}
+.task-calendar .fc .fc-button-primary:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+}
+.task-calendar .fc .fc-toolbar-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+.task-calendar .fc .fc-col-header-cell-cushion,
+.task-calendar .fc .fc-daygrid-day-number {
+  color: #475569;
+  font-weight: 500;
+}
+.task-calendar .fc-event {
+  cursor: pointer;
+  border-width: 0 0 0 4px;
+  border-radius: 6px;
+}
+.task-calendar .fc .fc-timegrid-slot {
+  height: 2.5rem;
+}
+@media (max-width: 640px) {
+  .task-calendar .fc .fc-toolbar {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+.task-calendar .fc-event:focus::after,
+.task-calendar .fc-event.fc-event-selected::after {
+  background: transparent;
+}
+.task-calendar .fc-event:focus-visible,
+.task-calendar .fc-event:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+  box-shadow: none;
 }
