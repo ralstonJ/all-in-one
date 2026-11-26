@@ -73,6 +73,17 @@ Direct reports are derived from each person's `reportsTo`, so the hierarchy is d
 Copy `.env.example` to `.env.local` and set `SESSION_SECRET` to a long random string
 (`openssl rand -hex 32`). A `.env.local` was generated when the project was created.
 
+## Deploying to Vercel
+
+1. In Vercel → Project → Settings → Environment Variables, add `SESSION_SECRET` (a long random value,
+   e.g. from `openssl rand -hex 32`) for Production and Preview. Without it, sign-in fails in production
+   with "SESSION_SECRET must be set". Redeploy after adding it.
+2. Data storage: locally the demo data lives in `.data/`. On Vercel (detected by the `VERCEL` env var) it
+   is written to the server's temporary folder instead, because the project folder is read-only there.
+   This is fine for demos, but data **resets** when Vercel starts a new server instance, and separate
+   instances don't share it. If even that folder can't be written, data is kept in memory. For lasting,
+   shared data, move the stores to a database (see `lib/data-store.ts`).
+
 ## Adding people or accounts
 
 - Add a person to `lib/data/people.ts` with a unique `id` and the `id` of their manager in `reportsTo`.

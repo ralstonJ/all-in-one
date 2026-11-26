@@ -1,12 +1,11 @@
 import "server-only";
-import fs from "node:fs";
-import path from "node:path";
+import { readJson, writeJson } from "@/lib/data-store";
 import { randomUUID } from "node:crypto";
 import type { CurrentUser } from "@/lib/auth";
 import { getAllReports, getDepartments, getPerson } from "@/lib/org";
 
 /**
- * Standard operating procedures, stored in .data/sops.json (gitignored).
+ * Standard operating procedures, stored in sops.json in the data folder (see lib/data-store.ts).
  *
  * Access model
  * - Every SOP belongs to one or more departments.
@@ -32,7 +31,6 @@ export type Sop = {
   version: number;
 };
 
-const FILE = path.join(process.cwd(), ".data", "sops.json");
 
 /* ─── Access ────────────────────────────────────────────────────────────── */
 
@@ -283,18 +281,15 @@ Bake temperature for EVs is capped at **50 °C** to protect the battery pack.
 }
 
 function load(): Sop[] {
-  try {
-    return JSON.parse(fs.readFileSync(FILE, "utf8")) as Sop[];
-  } catch {
-    const fresh = seed();
-    save(fresh);
-    return fresh;
-  }
+  const stored = readJson<Sop[]>("sops.json");
+  if (stored) return stored;
+  const fresh = seed();
+  save(fresh);
+  return fresh;
 }
 
 function save(sops: Sop[]) {
-  fs.mkdirSync(path.dirname(FILE), { recursive: true });
-  fs.writeFileSync(FILE, JSON.stringify(sops, null, 2));
+  writeJson("sops.json", sops, true);
 }
 
 /* ─── Queries & mutations ───────────────────────────────────────────────── */

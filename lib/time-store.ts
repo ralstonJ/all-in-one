@@ -1,12 +1,11 @@
 import "server-only";
-import fs from "node:fs";
-import path from "node:path";
+import { dataPath, readJson, writeJson } from "@/lib/data-store";
 import { randomUUID } from "node:crypto";
 import { getPerson } from "@/lib/org";
 
 /**
  * Tiny file-backed store for clock events and approval requests.
- * Lives in .data/store.json (gitignored); delete that file to reset the demo.
+ * Lives in store.json in the data folder (see lib/data-store.ts); delete it to reset the demo.
  */
 
 export type ClockEvent = {
@@ -74,7 +73,6 @@ type Store = {
   completions?: StoredCompletion[];
 };
 
-const FILE = path.join(process.cwd(), ".data", "store.json");
 
 /* ─── Date helpers (server local time) ──────────────────────────────────── */
 
@@ -286,18 +284,15 @@ function seed(): Store {
 }
 
 function load(): Store {
-  try {
-    return JSON.parse(fs.readFileSync(FILE, "utf8")) as Store;
-  } catch {
-    const fresh = seed();
-    save(fresh);
-    return fresh;
-  }
+  const stored = readJson<Store>("store.json");
+  if (stored) return stored;
+  const fresh = seed();
+  save(fresh);
+  return fresh;
 }
 
 function save(store: Store) {
-  fs.mkdirSync(path.dirname(FILE), { recursive: true });
-  fs.writeFileSync(FILE, JSON.stringify(store, null, 2));
+  writeJson("store.json", store, true);
 }
 
 /* ─── Clock ─────────────────────────────────────────────────────────────── */
@@ -421,7 +416,7 @@ export function decide(
 
 /* ─── Task completions ──────────────────────────────────────────────────── */
 
-export const UPLOAD_DIR = path.join(process.cwd(), ".data", "uploads");
+export const UPLOAD_DIR = dataPath("uploads");
 
 export function getCompletions(personId: string): StoredCompletion[] {
   return (load().completions ?? []).filter((c) => c.personId === personId);

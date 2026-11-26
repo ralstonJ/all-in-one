@@ -1,30 +1,23 @@
 import "server-only";
-import fs from "node:fs";
-import path from "node:path";
+import { readJson, writeJson } from "@/lib/data-store";
 import { accountsByRole, getAxAccount, type AxAccount } from "@/lib/axxion/accounts";
 import { seedAxxion } from "@/lib/axxion/seed";
 import type { AxStore, Claim, Stage } from "@/lib/axxion/types";
 import { STAGE, canRemind, canView, deadlineFor, isMyTurn, waitingOn } from "@/lib/axxion/workflow";
 import { addWorking } from "@/lib/axxion/working-time";
 
-/** File-backed store in .data/axxion.json. Delete the file to reset the demo. */
-const FILE = path.join(process.cwd(), ".data", "axxion.json");
+/** File-backed store: axxion.json in the data folder (see lib/data-store.ts). Delete it to reset the demo. */
 
 function load(): AxStore {
-  try {
-    const s = JSON.parse(fs.readFileSync(FILE, "utf8")) as AxStore;
-    if (s.version === 2) return s;
-  } catch {
-    // fall through to a fresh seed
-  }
+  const stored = readJson<AxStore>("axxion.json");
+  if (stored?.version === 2) return stored;
   const fresh = seedAxxion();
   save(fresh);
   return fresh;
 }
 
 function save(store: AxStore) {
-  fs.mkdirSync(path.dirname(FILE), { recursive: true });
-  fs.writeFileSync(FILE, JSON.stringify(store));
+  writeJson("axxion.json", store);
 }
 
 function enter(c: Claim, stage: Stage, at = new Date()) {
