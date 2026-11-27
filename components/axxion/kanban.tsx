@@ -61,19 +61,7 @@ function KanbanColumn({ label, dot, cards }: { label: string; dot: string; cards
       {cards.slice(0, SHOWN).map((k) => (
         <TaskCard key={k.key} k={k} />
       ))}
-      {cards.length > SHOWN && (
-        <details className="group/more">
-          <summary className="cursor-pointer list-none rounded-lg px-1 py-1 text-xs font-medium text-indigo-700 hover:underline [&::-webkit-details-marker]:hidden">
-            <span className="group-open/more:hidden">Show {cards.length - SHOWN} more</span>
-            <span className="hidden group-open/more:inline">Show fewer</span>
-          </summary>
-          <div className="mt-2 flex flex-col gap-2">
-            {cards.slice(SHOWN).map((k) => (
-              <TaskCard key={k.key} k={k} />
-            ))}
-          </div>
-        </details>
-      )}
+      {cards.length > SHOWN && <p className="px-1 text-center text-[11px] text-slate-500">+{cards.length - SHOWN} more</p>}
     </div>
   );
 }
