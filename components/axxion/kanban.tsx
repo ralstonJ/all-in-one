@@ -60,9 +60,7 @@ function KanbanColumn({ label, dot, cards }: { label: string; dot: string; cards
       {cards.length === 0 && <p className="px-1 py-3 text-center text-xs text-slate-500">Nothing here</p>}
       {cards.slice(0, SHOWN).map((k) => (
         <TaskCard key={k.key} k={k} />
-      ))}
-      {cards.length > SHOWN && <p className="px-1 text-center text-[11px] text-slate-500">+{cards.length - SHOWN} more</p>}
-    </div>
+      ))}    </div>
   );
 }
 
