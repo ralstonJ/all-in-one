@@ -9,6 +9,8 @@ import { SLA_CLOCKS, type SlaActor } from "@/lib/axxion/sla-catalogue";
 import { Blockers, ClaimLine, Inbox, SlaChips, Stat, StageBadge, TimingBadge, card, fmt, money } from "@/components/axxion/ui";
 import { QuoteForm, StageAction } from "@/components/axxion/stage-action";
 import { Countdown } from "@/components/axxion/countdown";
+import { WeeklyKanban } from "@/components/axxion/kanban";
+import { buildKanban } from "@/lib/axxion/kanban";
 import { AdminBlockers, AdminOverview, AdminPipeline, AdminTabs, AdminTeam, type AdminTab } from "@/components/axxion/admin";
 
 export const metadata: Metadata = { title: { absolute: "Home · Axxion Claims" } };
@@ -35,7 +37,7 @@ export default async function AxxionHome({ searchParams }: { searchParams: Promi
           time, Mon–Sat 09:00–18:00
         </p>
       </div>
-      {user.role === "handler" && <HandlerHome user={user} store={store} now={now} />}
+      {user.role === "handler" && <HandlerHome user={user} store={store} now={now} tab={sp.tab} />}
       {user.role === "surveyor" && <SurveyorHome user={user} store={store} now={now} />}
       {user.role === "head" && <HeadHome user={user} store={store} now={now} />}
       {user.role === "workshop" && <WorkshopHome user={user} store={store} now={now} />}
@@ -59,19 +61,52 @@ function Summary({ user, store, now }: P) {
   );
 }
 
-function HandlerHome(p: P) {
+const HANDLER_TABS = [
+  { id: "board", label: "Claims desk board" },
+  { id: "today", label: "Today's notifications" },
+  { id: "breached", label: "Breached SLAs" },
+] as const;
+
+function HandlerHome(p: P & { tab?: string }) {
   const { user, store, now } = p;
+  const tab = HANDLER_TABS.find((t) => t.id === p.tab)?.id ?? "board";
+  const inbox = inboxFor(user, store.claims, now);
+  const blockers = blockersFor(user, store.claims, now);
+  const counts: Record<string, number> = { today: inbox.length, breached: blockers.length };
   return (
     <>
       <Summary {...p} />
-      <Inbox
-        title="Today's notifications"
-        empty="Nothing breached, due or new today."
-        items={inboxFor(user, store.claims, now)}
-        quick={{ lpo: { type: "lpoReceived", label: "LPO received" } }}
-        now={now}
-      />
-      <Blockers items={blockersFor(user, store.claims, now)} user={user} now={now} />
+      <nav aria-label="Home sections" className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+        {HANDLER_TABS.map((t) => {
+          const on = t.id === tab;
+          return (
+            <Link
+              key={t.id}
+              href={t.id === "board" ? "/axxion/home" : `/axxion/home?tab=${t.id}`}
+              aria-current={on ? "page" : undefined}
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${on ? "bg-[#0b1f3a] text-white" : "text-slate-600 hover:bg-slate-100"}`}
+            >
+              {t.label}
+              {counts[t.id] > 0 && (
+                <span className={`rounded-full px-1.5 text-xs ${on ? "bg-white/20" : t.id === "breached" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-800"}`}>
+                  {counts[t.id]}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+      {tab === "board" && <WeeklyKanban weeks={buildKanban(user, store.claims, now)} />}
+      {tab === "today" && (
+        <Inbox
+          title="Today's notifications"
+          empty="Nothing breached, due or new today."
+          items={inbox}
+          quick={{ lpo: { type: "lpoReceived", label: "LPO received" } }}
+          now={now}
+        />
+      )}
+      {tab === "breached" && <Blockers items={blockers} user={user} now={now} />}
     </>
   );
 }
