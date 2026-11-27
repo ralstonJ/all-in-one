@@ -273,93 +273,92 @@ export function AdminOverview({ user, store, now }: { user: AxAccount; store: Ax
 
 export function AdminBlockers({ user, store, now, actor, clock }: { user: AxAccount; store: AxStore; now: Date; actor?: SlaActor; clock?: string }) {
   const all = blockersFor(user, store.claims, now);
-  const inActor = actor ? all.filter((b) => b.actor === actor) : all;
-  const filtered = clock ? inActor.filter((b) => b.clock.title === clock) : inActor;
-  const actors = (actor ? [actor] : SLA_ACTOR_ORDER).filter((a) => filtered.some((b) => b.actor === a));
+  const countFor = (a: SlaActor) => all.filter((b) => b.actor === a).length;
+  // No tab picked: open the first group that has breaches.
+  const active = actor ?? SLA_ACTOR_ORDER.find((a) => countFor(a) > 0) ?? SLA_ACTOR_ORDER[0];
+  const inActor = all.filter((b) => b.actor === active);
+  const items = clock ? inActor.filter((b) => b.clock.title === clock) : inActor;
   const clockCounts = new Map<string, number>();
   for (const b of inActor) clockCounts.set(b.clock.title, (clockCounts.get(b.clock.title) ?? 0) + 1);
+  const people = new Map<string, number>();
+  for (const b of items) people.set(b.waiting.label, (people.get(b.waiting.label) ?? 0) + 1);
+  const topPeople = [...people.entries()].sort((x, y) => y[1] - x[1]).slice(0, 8);
+  const remindable = items.filter((b) => canRemind(user, b.claim)).map((b) => b.claim.id);
 
-  const chip = (active: boolean) =>
-    `rounded-full px-3 py-1 text-xs font-medium transition ${active ? "bg-[#0b1f3a] text-white" : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"}`;
+  const chip = (on: boolean) =>
+    `rounded-full px-3 py-1 text-xs font-medium transition ${on ? "bg-[#0b1f3a] text-white" : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"}`;
 
   return (
     <div className="space-y-4">
-      <div className={`${card} space-y-3 p-4`}>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="w-16 text-xs font-semibold uppercase tracking-wide text-slate-500">Owner</span>
-          <Link href={href({ tab: "blockers" })} className={chip(!actor)}>
-            Everyone ({all.length})
-          </Link>
-          {SLA_ACTOR_ORDER.map((a) => {
-            const n = all.filter((b) => b.actor === a).length;
-            return n ? (
-              <Link key={a} href={href({ tab: "blockers", actor: a })} className={chip(actor === a)}>
-                {SLA_ACTORS[a].label} ({n})
-              </Link>
-            ) : null;
-          })}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="w-16 text-xs font-semibold uppercase tracking-wide text-slate-500">SLA</span>
-          <Link href={href({ tab: "blockers", actor })} className={chip(!clock)}>
-            Any
-          </Link>
-          {[...clockCounts.entries()]
-            .sort((a, b) => b[1] - a[1])
-            .map(([title, n]) => (
-              <Link key={title} href={href({ tab: "blockers", actor, clock: title })} className={chip(clock === title)}>
-                {title} ({n})
-              </Link>
-            ))}
-        </div>
-        <p className="text-xs text-slate-500">
-          Every breach below has already escalated automatically to its group. Reminders before the breach were sent automatically too.{" "}
-          <Link href="/axxion/sla" className="font-medium text-blue-600 hover:underline">See all SLA clocks</Link>
-        </p>
-      </div>
+      <nav aria-label="Breaches by owner" className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-slate-200">
+        {SLA_ACTOR_ORDER.map((a) => {
+          const n = countFor(a);
+          const on = a === active;
+          return (
+            <Link
+              key={a}
+              href={href({ tab: "blockers", actor: a })}
+              aria-current={on ? "page" : undefined}
+              className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition ${
+                on ? "border-[#0b1f3a] text-slate-900" : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800"
+              }`}
+            >
+              {SLA_ACTORS[a].label}
+              <span className={`rounded-full px-1.5 text-xs tabular-nums ${n ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-500"}`}>{n}</span>
+            </Link>
+          );
+        })}
+      </nav>
 
-      {actors.length === 0 && <p className={`${card} p-8 text-center text-sm text-slate-500`}>Nothing matches these filters.</p>}
-
-      {actors.map((a) => {
-        const items = filtered.filter((b) => b.actor === a);
-        const shown = actor ? items : items.slice(0, 5);
-        const people = new Map<string, number>();
-        for (const b of items) people.set(b.waiting.label, (people.get(b.waiting.label) ?? 0) + 1);
-        const topPeople = [...people.entries()].sort((x, y) => y[1] - x[1]).slice(0, 6);
-        const remindable = items.filter((b) => canRemind(user, b.claim)).map((b) => b.claim.id);
-        return (
-          <section key={a} className={card}>
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
-              <div>
-                <h2 className="font-semibold text-slate-900">
-                  {SLA_ACTORS[a].label} <span className="text-rose-700">· {items.length} breached</span>
-                </h2>
-                <p className="text-xs text-slate-500">Escalated to {SLA_ACTORS[a].escalation}</p>
-                {a !== "head" && topPeople.length > 0 && (
-                  <p className="mt-2 flex flex-wrap gap-1.5 text-xs">
-                    {topPeople.map(([name, n]) => (
-                      <span key={name} className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
-                        {name} <span className="font-semibold">{n}</span>
-                      </span>
-                    ))}
-                  </p>
-                )}
-              </div>
-              {remindable.length > 1 && <RemindAll claimIds={remindable} />}
+      <section className={card}>
+        <div className="space-y-3 border-b border-slate-100 px-5 py-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-slate-900">
+                {SLA_ACTORS[active].label} <span className="text-rose-700">· {items.length} breached</span>
+              </h2>
+              <p className="text-xs text-slate-500">
+                Escalated automatically to {SLA_ACTORS[active].escalation}. Reminders before the breach were sent automatically too.{" "}
+                <Link href="/axxion/sla" className="font-medium text-blue-600 hover:underline">See all SLA clocks</Link>
+              </p>
             </div>
-            <ul className="divide-y divide-slate-100 px-5">
-              {shown.map((b) => (
-                <BlockerRow key={b.claim.id} b={b} user={user} now={now} />
-              ))}
-            </ul>
-            {!actor && items.length > shown.length && (
-              <Link href={href({ tab: "blockers", actor: a, clock })} className="block border-t border-slate-100 px-5 py-3 text-sm font-medium text-blue-600 hover:bg-slate-50">
-                See all {items.length} {SLA_ACTORS[a].label.toLowerCase()} breaches →
+            {remindable.length > 1 && <RemindAll claimIds={remindable} />}
+          </div>
+          {clockCounts.size > 1 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">SLA</span>
+              <Link href={href({ tab: "blockers", actor: active })} className={chip(!clock)}>
+                Any ({inActor.length})
               </Link>
-            )}
-          </section>
-        );
-      })}
+              {[...clockCounts.entries()]
+                .sort((x, y) => y[1] - x[1])
+                .map(([title, n]) => (
+                  <Link key={title} href={href({ tab: "blockers", actor: active, clock: title })} className={chip(clock === title)}>
+                    {title} ({n})
+                  </Link>
+                ))}
+            </div>
+          )}
+          {active !== "head" && topPeople.length > 1 && (
+            <p className="flex flex-wrap gap-1.5 text-xs">
+              {topPeople.map(([name, n]) => (
+                <span key={name} className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
+                  {name} <span className="font-semibold">{n}</span>
+                </span>
+              ))}
+            </p>
+          )}
+        </div>
+        {items.length === 0 ? (
+          <p className="px-5 py-8 text-center text-sm text-slate-500">Nothing breached for {SLA_ACTORS[active].label.toLowerCase()} steps.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100 px-5">
+            {items.map((b) => (
+              <BlockerRow key={b.claim.id} b={b} user={user} now={now} />
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
